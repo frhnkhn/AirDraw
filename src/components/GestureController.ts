@@ -9,15 +9,11 @@ export class GestureController {
   
   private cursor: HTMLElement;
   private statusText: HTMLElement;
-  private toast: HTMLElement;
-  private toastEmoji: HTMLElement;
-  private toastText: HTMLElement;
   private modeBadge: HTMLElement;
   private modeLabel: HTMLElement;
 
   private isDrawing: boolean = false;
   private isModeActive: boolean = true; // true = Drawing/Pointer mode, false = View only
-  private toastTimeout: number = 0;
 
 
   
@@ -32,9 +28,6 @@ export class GestureController {
 
     this.cursor = document.getElementById('virtual-cursor')!;
     this.statusText = document.getElementById('gesture-status')!;
-    this.toast = document.getElementById('gesture-toast')!;
-    this.toastEmoji = document.getElementById('toast-emoji')!;
-    this.toastText = document.getElementById('toast-text')!;
     this.modeBadge = document.getElementById('mode-badge')!;
     this.modeLabel = document.getElementById('mode-label')!;
   }
