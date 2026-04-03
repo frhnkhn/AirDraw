@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Air Drawing fullscreen neon canvas" />
+    <title>Air Drawing — Gesture Canvas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <!-- Webcam Background -->
+    <div id="webcam-container">
+      <video id="webcam-video" autoplay muted playsinline></video>
+    </div>
+
+    <!-- Drawing Canvas Layer -->
+    <canvas id="drawing-canvas"></canvas>
+
+    <!-- Hand Skeleton Overlay Canvas -->
+    <canvas id="overlay-canvas"></canvas>
+
+    <!-- Virtual Cursor -->
+    <div id="virtual-cursor" class="cursor-idle">
+      <div class="cursor-ring"></div>
+      <div class="cursor-dot"></div>
+    </div>
+
+    <!-- Loading Screen Overlay -->
+    <div id="loading-screen">
+      <div class="loader-content">
+        <div class="hand-anim">✋</div>
+        <p class="progress-label" id="progress-label">Looking for camera...</p>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+      </div>
+    </div>
+
+    <!-- App UI Layer -->
+    <div id="app" class="hidden">
+      <!-- Camera Status Pill -->
+      <div class="camera-pill">
+        Camera ON
+      </div>
+
+      <!-- Right Action Panel -->
+      <aside class="right-panel">
+        <div class="panel-section">
+          <label class="section-label">COLORS</label>
+          <div class="color-grid">
+            <button class="color-swatch active" data-color="#48DBFB" style="--c1: #00f2fe; --c2: #4facfe;"></button>
+            <button class="color-swatch" data-color="#FF4B6E" style="--c1: #ff0844; --c2: #ffb199;"></button>
+            <button class="color-swatch" data-color="#55EFC4" style="--c1: #43e97b; --c2: #38f9d7;"></button>
+            <button class="color-swatch" data-color="#A29BFE" style="--c1: #a18cd1; --c2: #fbc2eb;"></button>
+            <button class="color-swatch" data-color="#FECA57" style="--c1: #f6d365; --c2: #fda085;"></button>
+            <button class="color-swatch" data-color="#FD79A8" style="--c1: #f093fb; --c2: #f5576c;"></button>
+            <button class="color-swatch" data-color="#9C88FF" style="--c1: #667eea; --c2: #764ba2;"></button>
+            <button class="color-swatch" data-color="#FFFFFF" style="--c1: #fdfbfb; --c2: #ebedee;"></button>
+          </div>
+        </div>
+
+        <div class="panel-section slider-section">
+          <label class="section-label">THICKNESS</label>
+          <div class="vertical-slider-container">
+            <input type="range" id="brush-size" min="2" max="30" value="6" orient="vertical" class="v-slider" />
+          </div>
+          <span id="brush-size-label" class="slider-val">6px</span>
+        </div>
+
+        <div class="panel-section slider-section">
+          <label class="section-label">GLOW</label>
+          <div class="vertical-slider-container">
+            <input type="range" id="brush-glow" min="0" max="100" value="60" orient="vertical" class="v-slider" />
+          </div>
+          <span id="brush-glow-label" class="slider-val">60%</span>
+        </div>
+
+        <div class="panel-section actions-section">
+          <button class="icon-btn" id="undo-btn" title="Undo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 14L4 9l5-5"/><path d="M4 9h10c4 0 7 3 7 7v4"/></svg>
+          </button>
+          <button class="icon-btn" id="clear-btn" title="Clear">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+          </button>
+          <button class="icon-btn" id="mode-toggle-btn" title="Mode">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><path d="M22 12h-2"/><path d="M12 2v2"/><path d="M12 22v-2"/><path d="M4 12H2"/></svg>
+          </button>
+          <button class="icon-btn" id="save-btn" title="Save">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+          </button>
+        </div>
+      </aside>
+
+      <!-- Bottom Show Hand Button -->
+      <button class="bottom-pill" id="webcam-toggle">
+        <span class="emoji">✋</span> SHOW HAND
+      </button>
+
+      <!-- Hidden UI elements preserved for logic -->
+      <div id="gesture-toast" class="hidden"></div>
+      <div id="toast-emoji" class="hidden"></div>
+      <div id="toast-text" class="hidden"></div>
+      <div id="gesture-status" class="hidden"></div>
+      <div id="mode-badge" class="hidden"></div>
+      <div id="mode-label" class="hidden"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

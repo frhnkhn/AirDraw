@@ -1,0 +1,354 @@
+/* ===================================================================
+   Air Drawing — Immersive Fullscreen UI
+   =================================================================== */
+
+:root {
+  --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --bg-panel: rgba(40, 40, 40, 0.4);
+  --bg-panel-border: rgba(255, 255, 255, 0.1);
+  --bg-panel-blur: blur(24px) saturate(1.2);
+  --bg-pill: rgba(30, 30, 30, 0.6);
+  --text-main: #ffffff;
+  --text-muted: rgba(255, 255, 255, 0.6);
+  --accent: #48DBFB;
+  --z-bg: 0;
+  --z-video: 1;
+  --z-canvas: 10;
+  --z-overlay: 11;
+  --z-cursor: 20;
+  --z-ui: 30;
+  --z-loading: 100;
+}
+
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-primary);
+  background: #000;
+  color: var(--text-main);
+  cursor: none; /* Hide default cursor */
+  z-index: var(--z-bg);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* --- Webcam Background --- */
+#webcam-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: var(--z-video);
+}
+
+#webcam-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1); /* mirror */
+  pointer-events: none;
+}
+
+/* Optional dark overlay to make glow pop */
+#webcam-container::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+/* --- Canvas Layers --- */
+#drawing-canvas,
+#overlay-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+}
+
+#drawing-canvas { z-index: var(--z-canvas); pointer-events: none; }
+#overlay-canvas { z-index: var(--z-overlay); pointer-events: none; }
+
+/* --- Virtual Cursor --- */
+#virtual-cursor {
+  position: absolute;
+  z-index: var(--z-cursor);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.15s;
+}
+
+.cursor-dot {
+  width: 8px;
+  height: 8px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(255,255,255,0.8);
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+#virtual-cursor.cursor-drawing .cursor-dot {
+  background: var(--accent);
+  box-shadow: 0 0 15px var(--accent);
+}
+
+/* --- Pills (Top-Left, Bottom-Center) --- */
+.camera-pill {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  padding: 8px 16px;
+  background: var(--bg-pill);
+  backdrop-filter: var(--bg-panel-blur);
+  -webkit-backdrop-filter: var(--bg-panel-blur);
+  border-radius: 30px;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: var(--z-ui);
+  border: 1px solid var(--bg-panel-border);
+  letter-spacing: 0.5px;
+}
+
+.bottom-pill {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 20px;
+  background: var(--bg-pill);
+  backdrop-filter: var(--bg-panel-blur);
+  -webkit-backdrop-filter: var(--bg-panel-blur);
+  border-radius: 30px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  border: 1px solid var(--bg-panel-border);
+  z-index: var(--z-ui);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bottom-pill:hover {
+  background: rgba(50, 50, 50, 0.8);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* --- Right Panel --- */
+.right-panel {
+  position: absolute;
+  right: 32px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--bg-panel);
+  backdrop-filter: var(--bg-panel-blur);
+  -webkit-backdrop-filter: var(--bg-panel-blur);
+  border: 1px solid var(--bg-panel-border);
+  border-radius: 20px;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+  z-index: var(--z-ui);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+
+.panel-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* Colors Grid */
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.color-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background: radial-gradient(circle at 30% 30%, var(--c1), var(--c2), #222);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.4);
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+}
+
+.color-swatch::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+.color-swatch:hover {
+  transform: translateY(-2px) scale(1.1);
+}
+
+.color-swatch.active::after {
+  opacity: 1;
+}
+
+/* Vertical Sliders */
+.slider-section {
+  gap: 16px;
+}
+
+.vertical-slider-container {
+  height: 120px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.v-slider {
+  -webkit-appearance: slider-vertical;
+  appearance: slider-vertical;
+  width: 8px;
+  height: 120px;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Webkit specific slider styling */
+.v-slider::-webkit-slider-runnable-track {
+  width: 2px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+.v-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(0,0,0,0.5);
+  transform: translateX(-6px);
+}
+
+.slider-val {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Action Icons */
+.actions-section {
+  gap: 12px;
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: scale(1.05);
+}
+
+.icon-btn:active {
+  transform: scale(0.95);
+}
+
+/* --- Loading Screen --- */
+#loading-screen {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  z-index: var(--z-loading);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: opacity 0.5s ease;
+}
+
+#loading-screen.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loader-content {
+  text-align: center;
+}
+
+.hand-anim {
+  font-size: 48px;
+  animation: pulse 1.5s infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.7; }
+}
+
+.progress-bar {
+  width: 200px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+.progress-label {
+  font-size: 13px;
+  color: var(--text-muted);
+}
